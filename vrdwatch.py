@@ -5,7 +5,7 @@ from time import sleep
 
 RECORDINGS = "/PATH/TO/RECORDINGS/FOLDER"
 VIDEOS = "/PATH/TO/HD/RECORDINGS"
-COMSKIP = "comskip"
+COMSKIP = "/PATH/TO/COMSKIP/EXECUTABLE"
 HD_PROGRAMS = " HD "
 ARG1 = "--ts"
 ARG2 = "--quiet"
@@ -45,14 +45,14 @@ def file_size_check(video):
 
 def is_recording(video):
     """Checks to see if the recording is still in process; ignores it if it is"""
-    print("Checking file size")
+    print("Checking file size to see if recording is still active.")
     first_check = file_size_check(video)
-    print(first_check)
+    print(f"First Check - current file size is {first_check}")
     sleep(5)
-    print("Rechecking file size to ensure it's not still recording")
     second_check = file_size_check(video)
-    print(second_check)
+    print(f"Second Check - current file size is {second_check}")
     if second_check > first_check:
+        print(f"{video} still recording or QSF running; skipping for now")
         return True
     else:
         return False
@@ -82,12 +82,15 @@ def processed_exist_check():
 
 processed_exist_check()
 
+# SD Recordings
+print("Checking recordings folder for new files.")
 for file in os.listdir(RECORDINGS):
     if fnmatch.fnmatch(file, "*.ts"):
         if check_processed():
             continue
         if HD_PROGRAMS in file:
-            continue  # QSF the file in VideoReDo before checking for adverts.  The output will be in the VIDEOS folder
+            print(f"{file} is a HD recording.  QSF required before processing.")
+            continue  # We skip HD files here so we can QSF them first.  Will be picked up in the HD section
         if is_recording(file):
             continue
         else:
@@ -95,15 +98,4 @@ for file in os.listdir(RECORDINGS):
             result = subprocess.run([COMSKIP, ARG1, ARG2, ARG3, ARG4, ARG5, f"{RECORDINGS}{file}"])
             with open(PROCESSED_FILES, "a") as completed:
                 completed.write(f"{file}\n")
-                delete_extra_files()
-
-for file in os.listdir(VIDEOS):
-    if HD_PROGRAMS in file:
-        if fnmatch.fnmatch(file, "*.ts"):
-            if check_processed():
-                continue
-            print(f"Processing {file}")
-            result = subprocess.run([COMSKIP, ARG1, ARG2, ARG3, ARG4, ARG5, f"{VIDEOS}{file}"])
-            with open(PROCESSED_FILES, "a") as completed:
-                completed.write(f"{file}\n")
-                delete_extra_files()
+                print("Deleting redundant comskip files ...")
