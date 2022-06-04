@@ -99,3 +99,20 @@ for file in os.listdir(RECORDINGS):
             with open(PROCESSED_FILES, "a") as completed:
                 completed.write(f"{file}\n")
                 print("Deleting redundant comskip files ...")
+                delete_extra_files()
+
+# HD Recordings
+print("Checking for new HD recordings.")
+for file in os.listdir(VIDEOS):
+    if HD_PROGRAMS in file:
+        if fnmatch.fnmatch(file, "*.ts"):
+            if check_processed():
+                continue
+            if is_recording(file):
+                continue
+            print(f"Processing {file}")
+            result = subprocess.run([COMSKIP, ARG1, ARG2, ARG3, ARG4, ARG5, f"{VIDEOS}{file}"])
+            with open(PROCESSED_FILES, "a") as completed:
+                completed.write(f"{file}\n")
+                print("Deleting redundant comskip files ...")
+                delete_extra_files()
