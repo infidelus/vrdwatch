@@ -1,2 +1,27 @@
 # vrdwatch
 Advert detector, written in Python and using comskip
+
+This was written as a solution for those of us that use VideoReDo on Linux and can't use VRD's batch manager or the VideoReDo Autoprocessor application as they both rely on COM calls that WINE can't currently deal with.
+
+*b What vrdwatch should do
+
+* Check your recordings folder for video files (currently set to .ts files, but you can change that to whatever format you record in)
+* Check to see if the files have already been processed
+* Check to see if the recording is still active, and ignore it if that's the case
+* Check to see if the recording in the processed.txt file still exists on the disk, and remove it from the text file if it doesn't
+
+*b Setup Notes
+
+Firstly, you will need to install Comskip, which can also be found on GitHub: https://github.com/erikkaashoek/Comskip
+
+You will also need your comskip.ini file.  I put mine in the same folder where this script is to make life easier.
+
+There are a few additional constants that need to have paths set to make this work:
+
+* RECORDINGS  # The path to your video recordings
+* COMSKIP  # This should work as is after you've installed Comskip, but if it doesn't work, you should just be able to pass the path to to the Comskip executable here
+* ARGx  # You can add any number of arguments for Comskip.  I had trouble passing all the arguments as one variable, so I separated them out, which seems to work.  Be sure to edit the 'result' variable if you add or remove any of the arguments
+
+I have a couple of extra constants (VIDEOS / HD_PROGRAMS) that I use as I run QuickStream Fix on HD files before I start editing them.  If all your recordings are HD, lucky you - you won't need to use the final for loop, and can take out the 'if HD_PROGRAMS in file:' section
+
+You can either run this script manually when you want to or, as I do, create a cron job to run it at intervals.
