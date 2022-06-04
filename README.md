@@ -3,14 +3,14 @@ Advert detector, written in Python and using comskip
 
 This was written as a solution for those of us that use VideoReDo on Linux and can't use VRD's batch manager or the VideoReDo Autoprocessor application as they both rely on COM calls that WINE can't currently deal with.
 
-**b What vrdwatch should do**
+**What vrdwatch should do**
 
 * Check your recordings folder for video files (currently set to .ts files, but you can change that to whatever format you record in)
 * Check to see if the files have already been processed
 * Check to see if the recording is still active, and ignore it if that's the case
 * Check to see if the recording in the processed.txt file still exists on the disk, and remove it from the text file if it doesn't
 
-**b Setup Notes**
+**Setup Notes**
 
 Firstly, you will need to install Comskip, which can also be found on GitHub: https://github.com/erikkaashoek/Comskip
 
