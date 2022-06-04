@@ -2,6 +2,8 @@ import os
 import fnmatch
 import subprocess
 from time import sleep
+script_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(script_dir)
 
 RECORDINGS = "/PATH/TO/RECORDINGS/FOLDER"
 VIDEOS = "/PATH/TO/HD/RECORDINGS"
@@ -83,13 +85,13 @@ def processed_exist_check():
 processed_exist_check()
 
 # SD Recordings
-print("Checking recordings folder for new files.")
+print("Checking recordings folder for new files.\n")
 for file in os.listdir(RECORDINGS):
     if fnmatch.fnmatch(file, "*.ts"):
         if check_processed():
             continue
         if HD_PROGRAMS in file:
-            print(f"{file} is a HD recording.  QSF required before processing.")
+            print(f"{file} is a HD recording.  QSF required before processing.\n")
             continue  # We skip HD files here so we can QSF them first.  Will be picked up in the HD section
         if is_recording(file):
             continue
@@ -98,11 +100,11 @@ for file in os.listdir(RECORDINGS):
             result = subprocess.run([COMSKIP, ARG1, ARG2, ARG3, ARG4, ARG5, f"{RECORDINGS}{file}"])
             with open(PROCESSED_FILES, "a") as completed:
                 completed.write(f"{file}\n")
-                print("Deleting redundant comskip files ...")
+                print("Deleting redundant comskip files.\n")
                 delete_extra_files()
 
 # HD Recordings
-print("Checking for new HD recordings.")
+print("Checking for new HD recordings.\n")
 for file in os.listdir(VIDEOS):
     if HD_PROGRAMS in file:
         if fnmatch.fnmatch(file, "*.ts"):
@@ -114,5 +116,5 @@ for file in os.listdir(VIDEOS):
             result = subprocess.run([COMSKIP, ARG1, ARG2, ARG3, ARG4, ARG5, f"{VIDEOS}{file}"])
             with open(PROCESSED_FILES, "a") as completed:
                 completed.write(f"{file}\n")
-                print("Deleting redundant comskip files ...")
+                print("Deleting redundant comskip files.\n")
                 delete_extra_files()
