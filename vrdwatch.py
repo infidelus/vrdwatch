@@ -17,6 +17,16 @@ ARG5 = "--output=/comskip/output/folder"
 PROCESSED_FILES = "processed.txt"
 
 
+def ignored_shows(filename):
+    with open("ignore_list.txt", "r") as il:
+        ignored = il.readlines()
+        for line in ignored:
+            ignored_file = line.strip("\n")
+            if ignored_file in str(filename):
+                return True
+        return False
+
+
 def check_processed():
     """Checks to see if we have already processed the recording and added it to processed.txt"""
     try:
@@ -97,6 +107,9 @@ processed_exist_check()
 print("Checking recordings folder for new files.\n")
 for file in os.listdir(RECORDINGS):
     if fnmatch.fnmatch(file, "*.ts"):
+        if ignored_shows(file):
+            print(f"{file} is in the ignore list.  Not processing.")
+            continue
         if check_processed():
             continue
         if HD_PROGRAMS in file:
