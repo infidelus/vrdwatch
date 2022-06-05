@@ -1,7 +1,7 @@
 # vrdwatch
 Advert detector, written in Python and using comskip
 
-This was written as a solution for those of us that use VideoReDo on Linux and can't use VRD's batch manager or the VideoReDo Autoprocessor application as they both rely on COM calls that WINE can't currently deal with.
+This was written as a solution for those of us that use [VideoReDo](https://www.videoredo.com) on Linux and can't use VRD's batch manager or the VideoReDo Autoprocessor application as they both rely on COM calls that WINE can't currently deal with.
 
 **What vrdwatch should do**
 
