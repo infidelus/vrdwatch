@@ -12,7 +12,7 @@ This was written as a solution for those of us that use [VideoReDo](https://www.
 
 **Setup Notes**
 
-Firstly, you will need to install Comskip, which can also be found on GitHub: https://github.com/erikkaashoek/Comskip.
+Firstly, you will need to install Comskip, which can also be found on [GitHub](https://github.com/erikkaashoek/Comskip).
 
 You will also need your comskip.ini file.  I put mine in the same folder where this script is to make life easier.
 
