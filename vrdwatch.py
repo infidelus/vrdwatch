@@ -34,10 +34,16 @@ def check_processed():
 
 def on_disk(filename):
     """Checks the files on disk"""
-    for vid in os.listdir(RECORDINGS):
-        if vid == filename:
-            return True
-    return False
+    if HD_PROGRAMS in filename:
+        for vid in os.listdir(VIDEOS):
+            if vid == filename:
+                return True
+        return False
+    else:
+        for vid in os.listdir(RECORDINGS):
+            if vid == filename:
+                return True
+        return False
 
 
 def file_size_check(video):
@@ -109,16 +115,15 @@ for file in os.listdir(RECORDINGS):
 # HD Recordings
 print("Checking for new HD recordings.\n")
 for file in os.listdir(VIDEOS):
-    if fnmatch.fnmatch(file, "*.ts"):
-        if HD_PROGRAMS in file:
-            if check_processed():
-                continue
-            if is_recording(file):
-                continue
+    if HD_PROGRAMS in file and fnmatch.fnmatch(file, "*.ts"):
+        if check_processed():
+            continue
+        if is_recording(file):
+            continue
+        else:
             print(f"Processing {file}")
             result = subprocess.run([COMSKIP, ARG1, ARG2, ARG3, ARG4, ARG5, f"{VIDEOS}{file}"])
             with open(PROCESSED_FILES, "a") as completed:
                 completed.write(f"{file}\n")
                 print("Deleting redundant comskip files.\n")
                 delete_extra_files()
-                
