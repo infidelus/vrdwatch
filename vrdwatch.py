@@ -42,7 +42,10 @@ def on_disk(filename):
 
 def file_size_check(video):
     """Returns the file size for each video"""
-    return os.stat(os.path.join(RECORDINGS, video)).st_size
+    if HD_PROGRAMS in video:
+        return os.stat(os.path.join(VIDEOS, video)).st_size
+    else:
+        return os.stat(os.path.join(RECORDINGS, video)).st_size
 
 
 def is_recording(video):
@@ -106,8 +109,8 @@ for file in os.listdir(RECORDINGS):
 # HD Recordings
 print("Checking for new HD recordings.\n")
 for file in os.listdir(VIDEOS):
-    if HD_PROGRAMS in file:
-        if fnmatch.fnmatch(file, "*.ts"):
+    if fnmatch.fnmatch(file, "*.ts"):
+        if HD_PROGRAMS in file:
             if check_processed():
                 continue
             if is_recording(file):
@@ -118,3 +121,4 @@ for file in os.listdir(VIDEOS):
                 completed.write(f"{file}\n")
                 print("Deleting redundant comskip files.\n")
                 delete_extra_files()
+                
