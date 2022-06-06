@@ -9,7 +9,7 @@ This was written as a solution for those of us that use [VideoReDo](https://www.
 * Check to see if the files have already been processed
 * Check to see if the recording is still active, and ignore it if that's the case
 * Check to see if the recording in the processed.txt file still exists on the disk, and remove it from the text file if it doesn't
-* Optionally, if you create an 'ignore_list.txt' file in the project folder, you can and add anything you don't want to process
+* Optionally, if you use the 'ignore_list.txt' file in the project folder to add anything you don't want to process
 
 **Setup Notes**
 
