@@ -2,12 +2,16 @@ import os
 import fnmatch
 import subprocess
 from time import sleep
+import traceback
+
+# Allows the script to be run as a cron job without failing with path errors
 script_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(script_dir)
 
 RECORDINGS = "/PATH/TO/RECORDINGS/FOLDER"
 VIDEOS = "/PATH/TO/HD/RECORDINGS"
 COMSKIP = "/PATH/TO/COMSKIP/EXECUTABLE"
+LOGFILE = "/PATH/TO/LOG/FILE"
 HD_PROGRAMS = " HD "
 ARG1 = "--ts"
 ARG2 = "--quiet"
@@ -97,10 +101,15 @@ def is_recording(video):
 
 def delete_extra_files():
     """Deletes all the extra files comskip creates when scanning for adverts"""
-    filename = os.path.splitext(file)[0]
-    os.remove(f"{VIDEOS}{filename}.txt")
-    os.remove(f"{VIDEOS}{filename}.edl")
-    os.remove(f"{VIDEOS}{filename}.log")
+    try:
+        filename = os.path.splitext(file)[0]
+        os.remove(f"{VIDEOS}{filename}.txt")
+        os.remove(f"{VIDEOS}{filename}.edl")
+        os.remove(f"{VIDEOS}{filename}.log")
+    except FileNotFoundError:
+        traceback_output = traceback.format_exc()
+        with open(LOGFILE, "w") as error_log:
+            print(traceback_output, file=error_log)
 
 
 def processed_exist_check():
