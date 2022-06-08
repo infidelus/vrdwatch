@@ -107,9 +107,8 @@ def delete_extra_files():
         os.remove(f"{VIDEOS}{filename}.edl")
         os.remove(f"{VIDEOS}{filename}.log")
     except FileNotFoundError:
-        traceback_output = traceback.format_exc()
-        with open(LOGFILE, "w") as error_log:
-            print(traceback_output, file=error_log)
+        with open(LOGFILE, "a") as error_log:
+            traceback.print_exc(file=error_log)
 
 
 def processed_exist_check():
