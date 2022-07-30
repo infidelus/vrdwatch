@@ -27,6 +27,3 @@ I have a couple of extra constants (VIDEOS / HD_PROGRAMS) that I use as I run Qu
 
 You can either run this script manually when you want to or create a cron job to run it at intervals.
 
-**Requirements**
-
-python3, python3-tk
