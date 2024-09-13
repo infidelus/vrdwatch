@@ -26,3 +26,5 @@ There are a few additional constants that need to have paths set to make this wo
 I have a couple of extra constants (VIDEOS / HD_PROGRAMS) that I use as I run QuickStream Fix on HD files before I start editing them.  If all your recordings are HD, lucky you; you won't need to use the final for loop and can take out of the 'if HD_PROGRAMS in file:' section.
 
 You can either run this script manually when you want to or create a cron job to run it at intervals.
+
+There is also now an additional script for use with Plex or similar media servers so the recordings don't all need to be in one specific folder.  See PLEX.md for further info.
