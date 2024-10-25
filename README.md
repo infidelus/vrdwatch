@@ -1,7 +1,7 @@
 # vrdwatch
 Advert detector, written in Python and using comskip
 
-This was written as a solution for those of us that use [VideoReDo](https://www.videoredo.com) on Linux and can't use VRD's batch manager or the VideoReDo Autoprocessor application as they both rely on COM calls that WINE can't currently deal with.
+This was written as a solution for those of us that use [VideoReDo](https://www.videoredo.com)* on Linux and can't use VRD's batch manager or the VideoReDo Autoprocessor application as they both rely on COM calls that WINE can't currently deal with.
 
 **What vrdwatch should do**
 
@@ -28,3 +28,5 @@ I have a couple of extra constants (VIDEOS / HD_PROGRAMS) that I use as I run Qu
 You can either run this script manually when you want to or create a cron job to run it at intervals.
 
 There is also now an additional script for use with Plex or similar media servers so the recordings don't all need to be in one specific folder.  See PLEX.md for further info.
+
+\* *The VideoReDo website no longer exists after the sad passing of its owner, Dan Rosen.  It is still possible to activate VideoReDo (though not the pro version) due to the ongoing efforts of the product's other developer, known as Dan203 on the VRD forum and [Reddit](https://www.reddit.com/r/videoredo/).*
