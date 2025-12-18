@@ -1,199 +1,243 @@
-import os
+#!/usr/bin/env python3
+"""
+vrdwatch_unified_lock_fixed.py
+------------------------------
+Unified advert-scan script for Tvheadend + Plex/Jellyfin.
+
+Note:
+- .VPrj creation depends on your comskip.ini settings (VideoReDo output enabled).
+"""
+
+from __future__ import annotations
+
+import argparse
 import fnmatch
+import os
 import subprocess
-from time import sleep
 import traceback
+from pathlib import Path
+from time import sleep
+from typing import Iterable, List
 
-# Allows the script to be run as a cron job without failing with path errors
-script_dir = os.path.dirname(os.path.realpath(__file__))
-os.chdir(script_dir)
+DEFAULT_INPUT_ROOTS = [
+    "/RECORDINGS/LOCATION/",
+    "/ANOTHER/RECORDINGS/LOCATION/",
+]
 
-RECORDINGS = "/PATH/TO/RECORDINGS/FOLDER"
-VIDEOS = "/PATH/TO/HD/RECORDINGS"
-COMSKIP = "/usr/local/bin/comskip"
-LOGFILE = "/PATH/TO/vrdwatch.log"
-HIGH_DEF = " HD "
-ARG1 = "--ts"
-ARG2 = "--quiet"
-ARG3 = "--vdpau"
-ARG4 = "--ini=comskip.ini"
-ARG5 = "--output=/comskip/output/folder"
-PROCESSING_FILES = "processing.txt"
-PROCESSED_FILES = "processed.txt"
-IGNORED_FILES = "ignore_list.txt"
+DEFAULT_OUTPUT_DIR = "/OUTPUT/PATH/HERE/"
+DEFAULT_COMSKIP = "/PATH/TO/COMSKIP/EXECUTABLE"
+DEFAULT_LOGFILE = "/PATH/TO/LOGFILE/vrdwatch.log"
 
+DEFAULT_COMSKIP_ARGS = [
+    "--ts",
+    "--quiet",
+    "--vdpau",
+    "--ini=comskip.ini",
+]
 
-class TerminalColours:
-    """ANSI Escape Codes to add text colours in the terminal to make it easier to see what's going on"""
-    GREEN = "\u001b[32m"
-    BLUE = "\x1B[34m"
-    MAGENTA = "\x1B[35m"
-    YELLOW = "\x1B[33m"
-    RED = "\x1B[31m"
-    RESET = "\u001b[0m"
+LOCK_FILE = "vrdwatch.lock"
+PROCESSED_FILE = "processed.txt"
+IGNORE_FILE = "ignore_list.txt"
+
+DEFAULT_PATTERN = "*.ts"
+DEFAULT_SIZE_CHECK_SECONDS = 5
 
 
-def text_file_check():
-    """Check to see if the processed and ignored text files exist; create them if they don't"""
-    text_files = [PROCESSING_FILES, PROCESSED_FILES, IGNORED_FILES]
-    for text_file in text_files:
-        if os.path.exists(text_file):
-            return True
-        else:
-            os.mknod(text_file)
-
-
-def ignored_shows(filename):
-    with open("ignore_list.txt", "r") as il:
-        ignored = il.readlines()
-        for line in ignored:
-            ignored_file = line.strip("\n")
-            if ignored_file in str(filename):
-                return True
-        return False
-
-
-def check_processing():
-    """Checks to see if we are currently processed the recording and have added it to processing.txt"""
-    with open(PROCESSING_FILES, "r") as pf:
-        file_check = pf.readlines()
-        for entry in file_check:
-            if str(file) in entry:
-                return True
-        return False
-
-
-def check_processed():
-    """Checks to see if we have already processed the recording and added it to processed.txt"""
-    with open(PROCESSED_FILES, "r") as pf:
-        file_check = pf.readlines()
-        for entry in file_check:
-            if str(file) in entry:
-                return True
-        return False
-
-
-def on_disk(filename):
-    """Checks the files on disk"""
-    if HIGH_DEF in filename:
-        for vid in os.listdir(VIDEOS):
-            if vid == filename:
-                return True
-        return False
-    else:
-        for vid in os.listdir(RECORDINGS):
-            if vid == filename:
-                return True
-        return False
-
-
-def file_size_check(video):
-    """Returns the file size for each video"""
-    if HIGH_DEF in video:
-        return os.stat(os.path.join(VIDEOS, video)).st_size
-    else:
-        return os.stat(os.path.join(RECORDINGS, video)).st_size
-
-
-def is_recording(video):
-    """Checks to see if the recording is still in progress; ignores it if it is"""
-    print(f"{TerminalColours.GREEN}Checking {video}'s file size to see if recording is still active.{TerminalColours.RESET}")
-    first_check = file_size_check(video)
-    print(f"{TerminalColours.MAGENTA}First Check - current file size is {first_check}")
-    sleep(5)
-    second_check = file_size_check(video)
-    print(f"Second Check - current file size is {second_check}{TerminalColours.RESET}")
-    if second_check > first_check:
-        print(f"{TerminalColours.YELLOW}{video} is still recording or QSF running; skipping for now{TerminalColours.RESET}")
-        return True
-    else:
-        return False
-
-
-def delete_extra_files():
-    """Deletes all the extra files comskip creates when scanning for adverts"""
+def pid_is_alive(pid: int) -> bool:
     try:
-        filename = os.path.splitext(file)[0]
-        os.remove(f"{VIDEOS}{filename}.txt")
-        os.remove(f"{VIDEOS}{filename}.edl")
-        os.remove(f"{VIDEOS}{filename}.log")
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def acquire_lock(script_dir: Path) -> bool:
+    lock = script_dir / LOCK_FILE
+    if lock.exists():
+        try:
+            pid = int(lock.read_text().strip())
+            if pid_is_alive(pid):
+                print(f"Another instance is running (PID {pid}); exiting.")
+                return False
+        except Exception:
+            pass
+    lock.write_text(str(os.getpid()))
+    return True
+
+
+def release_lock(script_dir: Path) -> None:
+    try:
+        (script_dir / LOCK_FILE).unlink()
     except FileNotFoundError:
-        with open(LOGFILE, "a") as error_log:
-            traceback.print_exc(file=error_log)
+        pass
 
 
-def processed_exist_check():
-    """Check to see if the processed files still exist on the disk; delete them from the list if not"""
-    with open(PROCESSED_FILES, "r") as pf:
-        lines = pf.readlines()
-        with open(PROCESSED_FILES, "w") as removing:
-            for number, line in enumerate(lines):
-                proc_line = line.strip("\n")
-                # Call the on_disk method; checks if a file exists and matches an entry in processed.txt
-                if on_disk(proc_line):
-                    temp_num = number
-                    if number in [temp_num]:
-                        removing.write(line)
+def read_list(path: Path) -> List[str]:
+    if not path.exists():
+        return []
+    out: List[str] = []
+    with path.open("r", encoding="utf-8", errors="replace") as f:
+        for raw in f:
+            s = raw.strip()
+            if not s or s.startswith("#"):
+                continue
+            out.append(s)
+    return out
 
 
-def processing_complete():
-    """When the file has completed processing remove it from processing.txt"""
-    with open(PROCESSING_FILES, "r") as pf:
-        lines = pf.readlines()
-        with open(PROCESSING_FILES, "w") as removing:
-            for number, line in enumerate(lines):
-                proc_line = line.strip("\n")
+def append_line(path: Path, line: str) -> None:
+    with path.open("a", encoding="utf-8") as f:
+        f.write(f"{line}\n")
 
 
-text_file_check()
-processed_exist_check()
+def cleanup_processed(path: Path) -> None:
+    if not path.exists():
+        return
 
-# SD Recordings
-print(f"{TerminalColours.GREEN}Checking recordings folder for new files.\n{TerminalColours.RESET}")
-for file in os.listdir(RECORDINGS):
-    if fnmatch.fnmatch(file, "*.ts"):
-        if ignored_shows(file):
-            print(f"{TerminalColours.RED}{file} is in the ignore list.  Not processing.\n{TerminalColours.RESET}")
-            continue
-        if check_processed():
-            # print(f"{TerminalColours.BLUE}{file} has already been processed.\n{TerminalColours.RESET}")
-            continue
-        if check_processing():
-            # print(f"{TerminalColours.BLUE}{file} is currently being processed.\n{TerminalColours.RESET}")
-            continue
-        if HIGH_DEF in file:
-            print(f"{TerminalColours.YELLOW}{file} is a HD recording.  QSF required before processing.\n{TerminalColours.RESET}")
-            continue
-        if is_recording(file):
-            continue
-        else:
-            with open(PROCESSING_FILES, "a") as processing:
-                processing.write(f"{file}\n")
-            print(f"{TerminalColours.BLUE}Processing {file}{TerminalColours.RESET}")
-            result = subprocess.run([COMSKIP, ARG1, ARG2, ARG3, ARG4, ARG5, f"{RECORDINGS}{file}"])
-            with open(PROCESSED_FILES, "a") as completed:
-                completed.write(f"{file}\n")
-                processing_complete()
-                print(f"{TerminalColours.GREEN}Deleting redundant comskip files.\n{TerminalColours.RESET}")
-                delete_extra_files()
+    original = read_list(path)
+    keep = [p for p in original if Path(p).exists()]
 
-# HD Recordings
-print(f"{TerminalColours.GREEN}Checking for new HD recordings.\n{TerminalColours.RESET}")
-for file in os.listdir(VIDEOS):
-    if HIGH_DEF in file and fnmatch.fnmatch(file, "*.ts"):
-        if check_processed():
+    if keep == original:
+        return  # nothing changed → do not rewrite
+
+    path.write_text("\n".join(keep) + ("\n" if keep else ""))
+
+
+def is_ignored(video: Path, patterns: List[str]) -> bool:
+    s_full = str(video)
+    s_name = video.name
+    for pat in patterns:
+        if pat in s_full or pat in s_name:
+            return True
+        if fnmatch.fnmatch(s_name, pat) or fnmatch.fnmatch(s_full, pat):
+            return True
+    return False
+
+
+def is_still_writing(video: Path, seconds: int) -> bool:
+    first = video.stat().st_size
+    sleep(seconds)
+    second = video.stat().st_size
+    return second > first
+
+
+def iter_videos(roots: Iterable[Path], pattern: str) -> Iterable[Path]:
+    for root in roots:
+        if not root.exists():
             continue
-        if check_processing():
-            continue
-        if is_recording(file):
-            continue
-        else:
-            with open(PROCESSING_FILES, "a") as processing:
-                processing.write(f"{file}\n")
-            print(f"{TerminalColours.BLUE}Processing {file}{TerminalColours.RESET}")
-            result = subprocess.run([COMSKIP, ARG1, ARG2, ARG3, ARG4, ARG5, f"{VIDEOS}{file}"])
-            with open(PROCESSED_FILES, "a") as completed:
-                completed.write(f"{file}\n")
-                processing_complete()
-                print(f"{TerminalColours.GREEN}Deleting redundant comskip files.\n{TerminalColours.RESET}")
-                delete_extra_files()
+        for p in root.rglob(pattern):
+            if p.is_file():
+                yield p
+
+
+def run_comskip(comskip: Path, base_args: List[str], output_dir: Path, video: Path) -> subprocess.CompletedProcess:
+    cmd = [str(comskip), *base_args, f"--output={str(output_dir)}", str(video)]
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def delete_comskip_extras(video: Path, output_dir: Path, logfile: Path) -> None:
+    stem = video.stem
+    for ext in (".txt", ".edl", ".log"):
+        p = output_dir / f"{stem}{ext}"
+        try:
+            p.unlink()
+        except FileNotFoundError:
+            pass
+        except Exception:
+            logfile.parent.mkdir(parents=True, exist_ok=True)
+            with logfile.open("a", encoding="utf-8") as log:
+                log.write(f"\n--- Failed deleting {p}\n")
+                traceback.print_exc(file=log)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Scan recordings for adverts using comskip (Tvheadend + Plex/Jellyfin).")
+
+    parser.add_argument("--input-root", action="append", dest="input_roots",
+                        help="Root folder to scan (can be provided multiple times).")
+
+    parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR,
+                        help="Where comskip writes outputs (e.g. .VPrj).")
+
+    parser.add_argument("--comskip", default=DEFAULT_COMSKIP,
+                        help="Path to comskip executable.")
+
+    parser.add_argument("--pattern", default=DEFAULT_PATTERN,
+                        help="Filename glob pattern (default: *.ts).")
+
+    parser.add_argument("--size-check-seconds", type=int, default=DEFAULT_SIZE_CHECK_SECONDS,
+                        help="Seconds between size checks to detect active recordings.")
+
+    parser.add_argument("--no-delete-extras", action="store_true",
+                        help="Do not delete comskip .txt/.edl/.log sidecars in output dir.")
+
+    args = parser.parse_args()
+
+    script_dir = Path(__file__).resolve().parent
+    os.chdir(script_dir)
+
+    if not acquire_lock(script_dir):
+        return 0
+
+    try:
+        roots = [Path(p) for p in (args.input_roots if args.input_roots else DEFAULT_INPUT_ROOTS)]
+        output_dir = Path(args.output_dir)
+        comskip = Path(args.comskip)
+        logfile = Path(DEFAULT_LOGFILE)
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        processed_path = script_dir / PROCESSED_FILE
+        ignore_path = script_dir / IGNORE_FILE
+        if not processed_path.exists():
+            processed_path.touch()
+        if not ignore_path.exists():
+            ignore_path.touch()
+
+
+        cleanup_processed(processed_path)
+
+        processed = set(read_list(processed_path))
+        ignored = read_list(ignore_path)
+
+        for video in iter_videos(roots, args.pattern):
+            v = str(video)
+
+            if v in processed:
+                continue
+            if is_ignored(video, ignored):
+                continue
+
+            try:
+                if is_still_writing(video, args.size_check_seconds):
+                    continue
+            except FileNotFoundError:
+                continue
+
+            print(f"Processing {video}")
+            result = run_comskip(comskip, DEFAULT_COMSKIP_ARGS, output_dir, video)
+
+            # comskip returns non-zero when no commercials are found (not an error)
+            if result.returncode != 0 and "Commercials were not found" not in result.stdout:
+                logfile.parent.mkdir(parents=True, exist_ok=True)
+                with logfile.open("a", encoding="utf-8") as log:
+                    log.write(f"\n--- comskip FAILED: {video}\n")
+                    log.write("CMD: " + " ".join([str(comskip), *DEFAULT_COMSKIP_ARGS, f"--output={output_dir}", str(video)]) + "\n")
+                    log.write(result.stdout or "")
+                    log.write(result.stderr or "")
+                continue
+
+            append_line(processed_path, v)
+            processed.add(v)
+
+            if not args.no_delete_extras:
+                delete_comskip_extras(video, output_dir, logfile)
+
+    finally:
+        release_lock(script_dir)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
